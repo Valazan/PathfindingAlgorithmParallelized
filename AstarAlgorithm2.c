@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define height 16
-#define width 16
+#define height 24
+#define width 24
 struct map {
 	int **mapTerrain;
 	int **distanceMap;
@@ -14,9 +14,9 @@ struct point {
 	};
 
 struct priorityQueue {
-	int x[1000];
-	int y[1000];
-	int d[1000];
+	int x[height*width];
+	int y[height*width];
+	int d[height*width];
 	int pointer;
 	};
 	
@@ -329,9 +329,13 @@ int calculateRoute(struct map *map, struct point *Currentpoint, struct point *en
 
 
 int calculateRouteOneStep(struct map *map, struct point *Currentpoint, struct point *endpoint,struct point *startpoint, struct priorityQueue *queue) {
-			computeDistances(map, Currentpoint, endpoint, startpoint, queue);
+			if (computeDistances(map, Currentpoint, endpoint, startpoint, queue)!=0) {
 			moveCurrentPosition(map, Currentpoint, queue);
-		return 0;
+			return 0;
+		}
+			else {
+			return 1;
+			}
 		}
 
 int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueToCheck) {
@@ -365,16 +369,16 @@ int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueTo
 
         /*display_file("data.txt");*/  //reading just char from txt file
 
-        create_map_from_file("data.txt",10, &sharedMap);   // reading matrix (matrix just for test) from txt file
+        //create_map_from_file("data.txt",10, &sharedMap);   // reading matrix (matrix just for test) from txt file
 
 
 
-
+		buildMap(&sharedMap);    
 		
-		startPoint.x=8;
-		startPoint.y=9;
-		endPoint.x=1;
-		endPoint.y=7;
+		startPoint.x=1;
+		startPoint.y=2;
+		endPoint.x=20;
+		endPoint.y=20;
 		int instancesNotMet = 1;
 
 		CurrentPosition.x=startPoint.x;
@@ -402,16 +406,18 @@ int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueTo
 		{
 		queue.pointer=0;
 		queue2.pointer=0;
-        	create_map_from_file("data.txt",10, &privateMap);   // reading matrix (matrix just for test) from txt file
-        	create_map_from_file("data.txt",10, &privateMap2);   // reading matrix (matrix just for test) from txt file
+		buildMap(&privateMap);  
+		buildMap(&privateMap2);      
+        	//create_map_from_file("data.txt",height, &privateMap);   // reading matrix (matrix just for test) from txt file
+        	//create_map_from_file("data.txt",height, &privateMap2);   // reading matrix (matrix just for test) from txt file
 		while(instancesNotMet) {
 		#pragma omp sections
 		{
 		#pragma omp section
 		{
 		printf("instance 1\n");
-		calculateRouteOneStep(&privateMap, &CurrentPosition, &endPoint, &startPoint, &queue);
-		if (checkOtherInstances(&sharedMap, &CurrentPosition, 4)) {
+
+		if (checkOtherInstances(&sharedMap, &CurrentPosition, 4) || calculateRouteOneStep(&privateMap, &CurrentPosition, &endPoint, &startPoint, &queue)) {
 		instancesNotMet = 0;
 		}
 		sharedMap.mapTerrain[CurrentPosition.x][CurrentPosition.y]=3;
@@ -420,8 +426,7 @@ int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueTo
 		#pragma omp section
 		{
 		printf("instance 2\n");
-		calculateRouteOneStep(&privateMap2, &CurrentPositionEnd, &startPoint, &endPoint, &queue2);
-		if (checkOtherInstances(&sharedMap, &CurrentPositionEnd, 3)) {
+		if (checkOtherInstances(&sharedMap, &CurrentPositionEnd, 3) || calculateRouteOneStep(&privateMap2, &CurrentPositionEnd, &startPoint, &endPoint, &queue2)) {
 		instancesNotMet = 0;
 		}
 		sharedMap.mapTerrain[CurrentPositionEnd.x][CurrentPositionEnd.y]=4;
