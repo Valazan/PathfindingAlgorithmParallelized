@@ -183,6 +183,12 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 
 
 
+
+		#pragma omp sections private(distanceToPass)
+		{
+		#pragma omp section 
+		{
+
 		//printf("thread: %i\n", omp_get_thread_num());
 
 		if (Currentpoint->x+1<=width && map->mapTerrain[Currentpoint->x+1][Currentpoint->y]!=2 && map->mapTerrain[Currentpoint->x+1][Currentpoint->y]!=3)
@@ -194,6 +200,8 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 
         	d2=ManhattanDistance(Currentpoint->x+1, Currentpoint->y, startpoint->x, startpoint->y);
 
+		#pragma omp critical
+		{
 
 		map->distanceMap[Currentpoint->x+1][Currentpoint->y]=2*d1+d2;
 		distanceToPass = 2*d1+d2;
@@ -212,8 +220,11 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 
 		}
 		}
+		}
+		}
 
-
+		#pragma omp section
+		{
 
 		//printf("thread: %i\n", omp_get_thread_num());
 
@@ -225,6 +236,8 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 
         	d4=ManhattanDistance(Currentpoint->x, Currentpoint->y+1, startpoint->x, startpoint->y);
 
+		#pragma omp critical
+		{
 		map->distanceMap[Currentpoint->x][Currentpoint->y+1]=2*d3+d4;
 		distanceToPass=2*d3+d4;
 
@@ -237,9 +250,13 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 		queue->d[queue->pointer]=distanceToPass;
 		//printf("distance inserted: %i\n",distanceToPass );
 		//end of information adding
-
 		}
 		}
+		}
+		}
+		
+		#pragma omp section
+		{
 
 		//printf("thread: %i\n", omp_get_thread_num());
 		if (Currentpoint->x-1>=0 && map->mapTerrain[Currentpoint->x-1][Currentpoint->y]!=2 && map->mapTerrain[Currentpoint->x-1][Currentpoint->y]!=3)
@@ -250,6 +267,8 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 		//printf("%i \n",  map->distanceMap[Currentpoint->x-1][Currentpoint->y]);
         	d6=ManhattanDistance(Currentpoint->x-1, Currentpoint->y, startpoint->x, startpoint->y);
 
+		#pragma omp critical
+		{
 		map->distanceMap[Currentpoint->x-1][Currentpoint->y]=2*d5+d6;
 		distanceToPass=2*d5+d6;
 
@@ -263,7 +282,11 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 		//end of information adding
 		}
 		}
-
+		}
+		}
+		
+		#pragma omp section
+		{
 		//printf("thread: %i\n", omp_get_thread_num());
 		if(Currentpoint->y-1>=0 && map->mapTerrain[Currentpoint->x][Currentpoint->y-1]!=2 && map->mapTerrain[Currentpoint->x][Currentpoint->y-1]!=3)
 		{
@@ -273,6 +296,8 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 
         	d8=ManhattanDistance(Currentpoint->x, Currentpoint->y-1, startpoint->x, startpoint->y);
 
+		#pragma omp critical
+		{
 		map->distanceMap[Currentpoint->x][Currentpoint->y-1]=2*d7+d8;
 		distanceToPass=2*d7+d8;
 
@@ -287,9 +312,15 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 		//end of information adding
 		}
 		}
+		}
+		}
+
+		}
+
+		#pragma omp barrier
 
 		
-
+		#pragma omp critical
 		sortPriorityQueue(queue);
 		printf("%i %i %i \n", queue->d[0],  queue->x[0],  queue->y[0]);
 
@@ -379,7 +410,7 @@ int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueTo
 		startPoint.x=1;
 		startPoint.y=2;
 		endPoint.x=2;
-		endPoint.y=20;
+		endPoint.y=80;
 		int instancesNotMet = 1;
 
 		CurrentPosition.x=startPoint.x;
@@ -403,15 +434,34 @@ int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueTo
 
 		
 
+		#pragma omp parallel shared(sharedMap, instancesNotMet)
+		{
+
 		queue.pointer=0;
 		queue2.pointer=0;
 		buildMap(&privateMap);  
 		buildMap(&privateMap2);      
-                calculateRoute(&privateMap, &CurrentPosition, &endPoint, &startPoint, &queue);
-	
-		privateMap.mapTerrain[startPoint.x][startPoint.y]=1;
-		privateMap.mapTerrain[endPoint.x][endPoint.y]=1;
-		printMap(&privateMap);
+        	//create_map_from_file("data.txt",height, &privateMap);   // reading matrix (matrix just for test) from txt file
+        	//create_map_from_file("data.txt",height, &privateMap2);   // reading matrix (matrix just for test) from txt file
+		while(instancesNotMet) {
+		printf("thread: %i\n", omp_get_thread_num());
+		if (checkOtherInstances(&sharedMap, &CurrentPosition, 4) || calculateRouteOneStep(&privateMap, &CurrentPosition, &endPoint, &startPoint, &queue)) {
+		instancesNotMet = 0;
+		}
+		sharedMap.mapTerrain[CurrentPosition.x][CurrentPosition.y]=3;
+
+
+		printf("thread: %i\n", omp_get_thread_num());
+		if (checkOtherInstances(&sharedMap, &CurrentPositionEnd, 3) || calculateRouteOneStep(&privateMap2, &CurrentPositionEnd, &startPoint, &endPoint, &queue2)) {
+		instancesNotMet = 0;
+		}
+		sharedMap.mapTerrain[CurrentPositionEnd.x][CurrentPositionEnd.y]=4;
+		}
+		#pragma omp barrier
+		}
+		sharedMap.mapTerrain[startPoint.x][startPoint.y]=1;
+		sharedMap.mapTerrain[endPoint.x][endPoint.y]=1;
+		printMap(&sharedMap);
 
 		/*printf("\n\n");
 		printDistanceMap(&map);
