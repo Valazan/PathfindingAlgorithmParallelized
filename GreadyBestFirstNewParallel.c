@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define height 11
-#define width 11
+#define height 100
+#define width 100
 struct map {
 	int **mapTerrain;
 	int **distanceMap;
@@ -308,7 +308,7 @@ int moveCurrentPosition(struct map *map, struct point *Currentpoint, struct prio
 		
 		//if (map->mapTerrain[xNew][yNew]!=3){
 		#pragma omp barrier		
-		map->mapTerrain[xNew][yNew]=3;  //when i move the current position to a new location, i mark that location in the mapTerrain putting a 3, in this way I 
+		//map->mapTerrain[xNew][yNew]=3;  //when i move the current position to a new location, i mark that location in the mapTerrain putting a 3, in this way I 
 		Currentpoint->x=xNew;		//could avoid to compute again distances from a position
 		Currentpoint->y=yNew;
 		queue->d[0]=height*width;
@@ -335,9 +335,24 @@ int calculateRoute(struct map *map, struct point *Currentpoint, struct point *en
 		}
 
 int calculateRouteOneStep(struct map *map, struct point *Currentpoint, struct point *endpoint, struct priorityQueue *queue) {
-			computeDistances(map, Currentpoint, endpoint, queue);
+			if(computeDistances(map, Currentpoint, endpoint, queue) != 0) {
 			moveCurrentPosition(map, Currentpoint, queue);
+			return 0;
+			}
+			else
+			{
+			return 1;
+			}
+		}
+
+int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueToCheck) {
+		if (map->mapTerrain[Currentpoint->x+1][Currentpoint->y]!=valueToCheck && map->mapTerrain[Currentpoint->x][Currentpoint->y+1]!= valueToCheck 			&& map->mapTerrain[Currentpoint->x-1][Currentpoint->y]!=valueToCheck && map->mapTerrain[Currentpoint->x][Currentpoint->y-1]!=valueToCheck)
+		{
 		return 0;
+		}
+		else {
+		return 1;
+		}
 		}
 			
 
@@ -368,15 +383,14 @@ int calculateRouteOneStep(struct map *map, struct point *Currentpoint, struct po
 		queueParallel2.pointer=0;
 		startPoint.x=1;
 		startPoint.y=3;
-		endPoint.x=9;
-		endPoint.y=9;
+		endPoint.x=80;
+		endPoint.y=80;
 		CurrentPosition.x=startPoint.x;
 		CurrentPosition.y=startPoint.y;
 		CurrentPositionEnd.x=endPoint.x;
 		CurrentPositionEnd.y=endPoint.y;
 
-		CurrentPosition4.x=1;
-		CurrentPosition4.y=9;
+
 
 		
 		buildMap(&map);
@@ -410,30 +424,40 @@ int calculateRouteOneStep(struct map *map, struct point *Currentpoint, struct po
 		CurrentPosition3.x=3;
 		CurrentPosition3.y=1; */
 
-		CurrentPosition2.x=2;
-		CurrentPosition2.y=1;
+	
 
-		calculateRoute(&map, &CurrentPosition, &endPoint, &queueParallel);
-
+		//calculateRoute(&map, &CurrentPosition, &endPoint, &queueParallel);
 
 
+		int instancesNotMet = 1;
 
 		 
-		/*#pragma omp parallel shared(map, CurrentPosition, CurrentPositionEnd) private(queueParallel)
+		#pragma omp parallel shared(map, CurrentPosition, CurrentPositionEnd) private(queueParallel)
 		{
 		queueParallel.pointer=0;
+		while(instancesNotMet) 
+		{
 		#pragma omp sections
 		{
 		#pragma omp section
 		{
-		calculateRoute(&map, &CurrentPosition, &endPoint, &queueParallel);
+		if(calculateRouteOneStep(&map, &CurrentPosition, &CurrentPositionEnd, &queueParallel) || checkOtherInstances(&map, &CurrentPosition, 4)) {
+		instancesNotMet = 0;
+		printf("instances are met: %i\n", instancesNotMet);
+		}
+		map.mapTerrain[CurrentPosition.x][CurrentPosition.y]=3;
 		}
 		#pragma omp section
 		{
-		calculateRoute(&map, &CurrentPositionEnd, &startPoint, &queueParallel);
+		if(calculateRouteOneStep(&map, &CurrentPositionEnd, &CurrentPosition, &queueParallel) || checkOtherInstances(&map, &CurrentPositionEnd, 3)) {
+		instancesNotMet = 0;
+		printf("instances are met: %i\n", instancesNotMet);
+		}
+		map.mapTerrain[CurrentPositionEnd.x][CurrentPositionEnd.y]=4;
 		}
 		}
-		}*/
+		}
+		}
 
 
 

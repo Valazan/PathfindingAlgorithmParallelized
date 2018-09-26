@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define height 100
-#define width 100
+#define height 500
+#define width 500
 struct map {
 	int **mapTerrain;
 	int **distanceMap;
@@ -291,7 +291,7 @@ int computeDistances(struct map *map, struct point *Currentpoint, struct point *
 		
 
 		sortPriorityQueue(queue);
-		printf("%i %i %i \n", queue->d[0],  queue->x[0],  queue->y[0]);
+		//printf("%i %i %i \n", queue->d[0],  queue->x[0],  queue->y[0]);
 
 
 
@@ -378,8 +378,8 @@ int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueTo
 		
 		startPoint.x=1;
 		startPoint.y=2;
-		endPoint.x=2;
-		endPoint.y=20;
+		endPoint.x=1;
+		endPoint.y=400;
 		int instancesNotMet = 1;
 
 		CurrentPosition.x=startPoint.x;
@@ -411,7 +411,7 @@ int checkOtherInstances(struct map *map, struct point *Currentpoint, int valueTo
 	
 		privateMap.mapTerrain[startPoint.x][startPoint.y]=1;
 		privateMap.mapTerrain[endPoint.x][endPoint.y]=1;
-		printMap(&privateMap);
+		//printMap(&privateMap);
 
 		/*printf("\n\n");
 		printDistanceMap(&map);
